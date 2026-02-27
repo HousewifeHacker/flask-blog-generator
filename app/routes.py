@@ -1,35 +1,26 @@
 from flask import render_template, request, redirect, url_for
+from slugify import slugify
 
 from app import app
+from app.utils.posts_utils import load_posts, load_post, save_post
 
 # list
 @app.route("/admin")
 def admin():
-    posts = [{
-        "title": "My First Post",
-        "slug": "my-first-post",
-        "content": "This is the content of my first post.",
-        "created_at": "2024-06-01",
-        "modified_at": "2024-06-01",
-        "published": True
-    }]
+    """Admin dashboard showing list of markdown files."""
+    posts = load_posts(app.config["POSTS_DIR"])
     return render_template("admin_list.html", posts=posts)
 
 # read, update
 @app.route("/posts/<slug>")
 def post_detail(slug):
-    posts = [{
-        "title": "My First Post",
-        "slug": "my-first-post",
-        "content": "This is the content of my first post.",
-        "created_at": "2024-06-01",
-        "modified_at": "2024-06-01",
-        "published": True
-    }]
-    post = next((p for p in posts if p["slug"] == slug), None)
+    post = load_post(app.config["POSTS_DIR"], slug)
     if post:
         if request.method == "POST":
-            #TODO: Save post changes
+            title = request.form.get("title")
+            content = request.form.get("content")
+            published = request.form.get("published") == "on"
+            save_post(app.config["POSTS_DIR"], slug, title, content, published)
             return redirect(url_for("admin"))
         else:
             return render_template("post_editor.html", post=post)
@@ -40,7 +31,11 @@ def post_detail(slug):
 @app.route("/posts/new", methods=["GET", "POST"])
 def new_post():
     if request.method == "POST":
-        #TODO: Save new post
+        title = request.form.get("title")
+        content = request.form.get("content")
+        published = request.form.get("published") == "on"
+        slug = slugify(title)
+        save_post(app.config["POSTS_DIR"], slug, title, content, published)
         return redirect(url_for("admin"))
     else:
         return render_template("post_editor.html", post=None)
