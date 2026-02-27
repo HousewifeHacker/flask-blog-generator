@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{% endblock %} - HHDevConsulting</title>
+    <!-- Link static files like CSS using url_for -->
+    <!--TODO <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">-->
+</head>
+<body>
+    <!--<nav>
+        <a>Home</a>
+        <a>About</a>
+    </nav>
+    <hr>-->
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+    <footer>
+        {% block footer %}
+        &copy; Copyright 2026 by Jessica Anderson.
+        {% endblock %}
+    </footer>
+</body>
+</html>

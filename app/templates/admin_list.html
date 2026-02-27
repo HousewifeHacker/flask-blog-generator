@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Admin Dashboard</h1>
+
+<table border="1" cellpadding="8">
+    <tr>
+        <th>Title</th>
+        <th>Created</th>
+        <th>Modified</th>
+        <th>Status</th>
+        <th>Actions</th>
+    </tr>
+
+    {% for post in posts %}
+    <tr>
+        <td>{{ post.title }}</td>
+        <td>{{ post.created_at }}</td>
+        <td>{{ post.modified_at }}</td>
+        <td>
+            {% if post.published %}
+                Published
+            {% else %}
+                Draft
+            {% endif %}
+        </td>
+        <td>
+            Edit
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

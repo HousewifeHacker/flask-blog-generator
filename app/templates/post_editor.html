@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>{{ post.title if post else "New Post" }}</h1>
+
+<form method="POST">
+    <input type="checkbox" name="published" id="published" {% if post and post.published %}checked{% endif %}>
+    <label for="published">Published</label><br><br>
+    <input type="text" name="title" placeholder="Post Title" required value="{{ post.title if post else '' }}">
+    <textarea name="content" id="editor">{{ post.content if post else '' }}</textarea>
+    <button type="submit">Save</button>
+</form>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/simplemde/1.11.2/simplemde.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/simplemde/1.11.2/simplemde.min.js"></script>
+
+<script>
+    new SimpleMDE({ element: document.getElementById("editor") });
+</script>
+
+{% endblock %}
