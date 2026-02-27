@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<h1>HHDevConsulting</h1>
+
+<ul>
+    {% for post in posts %}
+    <li>
+        <a href="generated_posts/{{ post.slug }}.html">{{ post.title }}</a>
+        <small>{{ post.modified_at[:10] }}</small>
+    </li>
+    {% else %}
+    <li>No posts yet.</li>
+    {% endfor %}
+</ul>
+
+{% if prev_url or next_url %}
+<nav>
+    {% if prev_url %}<a href="{{ prev_url }}">&larr; Newer</a>{% endif %}
+    {% if prev_url and next_url %} &middot; {% endif %}
+    {% if next_url %}<a href="{{ next_url }}">Older &rarr;</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

@@ -3,6 +3,8 @@
 
 <h1>Admin Dashboard</h1>
 
+<a href="{{ url_for('new_post') }}">+ New Post</a>
+
 <table border="1" cellpadding="8">
     <tr>
         <th>Title</th>
@@ -26,6 +28,9 @@
         </td>
         <td>
             <a href="{{ url_for('post_detail', slug=post.slug) }}">Edit</a>
+            {% if post.published %}
+            &middot; <a href="{{ url_for('preview', slug=post.slug) }}" target="_blank">View</a>
+            {% endif %}
         </td>
     </tr>
     {% endfor %}
