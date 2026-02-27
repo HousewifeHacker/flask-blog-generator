@@ -76,3 +76,6 @@ def generate_site(app):
             out_filename = "index.html" if page == 1 else f"page-{page}.html"
             with open(os.path.join(output_dir, out_filename), "w") as f:
                 f.write(page_html)
+
+        with open(os.path.join(output_dir, "about.html"), "w") as f:
+            f.write(render_template("about.html"))

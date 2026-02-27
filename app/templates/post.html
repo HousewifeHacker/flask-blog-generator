@@ -1,10 +1,8 @@
-{% extends "base.html" %}
+{% extends "base_public.html" %}
 
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<a href="../index.html">&larr; Home</a>
-
 <article>
     <h1>{{ title }}</h1>
     <small>{{ modified_at[:10] }}</small>
