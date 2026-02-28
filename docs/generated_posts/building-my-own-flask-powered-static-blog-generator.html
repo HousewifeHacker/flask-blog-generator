@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Building My Own Flask-Powered Static Blog Generator - HHDevConsulting</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+
+</head>
+<body>
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/index.html">HousewifeHacker Blog</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="nav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item"><a class="nav-link" href="/index.html">Home</a></li>
+                    <li class="nav-item"><a class="nav-link" href="/about.html">About</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container my-4">
+        
+<style>
+    article ul { list-style: disc; padding-left: 1.5rem; }
+    article ol { list-style: decimal; padding-left: 1.5rem; }
+</style>
+<article>
+    <h1>Building My Own Flask-Powered Static Blog Generator</h1>
+    <small>2026-02-28</small>
+    <hr>
+    <p>I’ve hosted a blog on GitHub Pages for many years, which is awesome in that it’s free, fast, and handles static HTML. But I started wanting a better way to write blog posts locally, without manually editing HTML or copying and pasting Markdown files into the repo.  </p>
+<p>So I built a small Flask app to serve as an admin interface for writing, editing, and generating blog content, something like a lightweight CMS, that eventually provides static HTML that can be deployed to GitHub Pages.</p>
+<h3>Project Goals</h3>
+<p>Here were my core goals for this project:</p>
+<ul>
+<li>Run a local web server for writing posts.</li>
+<li>Use a WYSIWYG-style Markdown editor.</li>
+<li>Save drafts without publishing them.</li>
+<li>Generate static HTML pages for GitHub Pages.</li>
+<li>Automatically generate the blog index with pagination.</li>
+<li>Use templates for consistent styling.</li>
+<li>Keep dependencies clean.</li>
+</ul>
+<p>I also decided I wasn’t going to host this web app publicly. It only runs on my machine. That meant no containers or cloud hosting were necessary. Poetry was my choice for dependency management instead of a virtual environment + requirements.txt.</p>
+<h3>Flask</h3>
+<p>While developing my solution, I realized that I didn't need auth. It is my GitHub repo and my local code on my computer, so I still have control over what gets published to my blog. I also realized that I didn't need a database, though I did decide to maintain a json file for more efficient loading and updating on the index pages. Flask is lightweight and flexible by design, yet gives you:</p>
+<ul>
+<li>Routing</li>
+<li>Templates (Jinja2)</li>
+<li>Request handling</li>
+<li>Static file serving</li>
+</ul>
+<h3>Handling markdown files</h3>
+<p>I found the JavaScript Markdown editor EasyMDE for adding WYSIWYG to Markdown. Then I combined that with the Python library python-frontmatter for adding metadata. The resulting markdown file was written to disk with just Python. Remember I was also using index.json as an efficient lookup object. These are the helpers to load and modify the markdown files:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">frontmatter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="n">_INDEX_FILE</span> <span class="o">=</span> <span class="s2">&quot;index.json&quot;</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_index_path</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">,</span> <span class="n">_INDEX_FILE</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_read_index</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">):</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">_index_path</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{}</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_write_index</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">,</span> <span class="n">index</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">_index_path</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">index</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">load_posts</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Returns all post metadata from the index, sorted by modified_at descending.&quot;&quot;&quot;</span>
+    <span class="n">index</span> <span class="o">=</span> <span class="n">_read_index</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">)</span>
+    <span class="n">posts</span> <span class="o">=</span> <span class="p">[{</span><span class="s2">&quot;slug&quot;</span><span class="p">:</span> <span class="n">slug</span><span class="p">,</span> <span class="o">**</span><span class="n">meta</span><span class="p">}</span> <span class="k">for</span> <span class="n">slug</span><span class="p">,</span> <span class="n">meta</span> <span class="ow">in</span> <span class="n">index</span><span class="o">.</span><span class="n">items</span><span class="p">()]</span>
+    <span class="n">posts</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="p">[</span><span class="s2">&quot;modified_at&quot;</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">posts</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">load_post</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">,</span> <span class="n">slug</span><span class="p">):</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">slug</span><span class="si">}</span><span class="s2">.md&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">frontmatter</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">save_post</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">,</span> <span class="n">slug</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">published</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Saves a post to a markdown file and updates the metadata index.&quot;&quot;&quot;</span>
+    <span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">()</span>
+    <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">slug</span><span class="si">}</span><span class="s2">.md&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="n">post</span> <span class="o">=</span> <span class="n">frontmatter</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">created_at</span> <span class="o">=</span> <span class="n">post</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;created_at&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">created_at</span> <span class="o">=</span> <span class="n">now</span>
+
+    <span class="n">post</span> <span class="o">=</span> <span class="n">frontmatter</span><span class="o">.</span><span class="n">Post</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+    <span class="n">post</span><span class="p">[</span><span class="s2">&quot;title&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">title</span>
+    <span class="n">post</span><span class="p">[</span><span class="s2">&quot;published&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">published</span>
+    <span class="n">post</span><span class="p">[</span><span class="s2">&quot;created_at&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">created_at</span>
+    <span class="n">post</span><span class="p">[</span><span class="s2">&quot;modified_at&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">now</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">frontmatter</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">post</span><span class="p">))</span>
+
+    <span class="n">index</span> <span class="o">=</span> <span class="n">_read_index</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">)</span>
+    <span class="n">index</span><span class="p">[</span><span class="n">slug</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="n">title</span><span class="p">,</span>
+        <span class="s2">&quot;published&quot;</span><span class="p">:</span> <span class="n">published</span><span class="p">,</span>
+        <span class="s2">&quot;created_at&quot;</span><span class="p">:</span> <span class="n">created_at</span><span class="p">,</span>
+        <span class="s2">&quot;modified_at&quot;</span><span class="p">:</span> <span class="n">now</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">_write_index</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">,</span> <span class="n">index</span><span class="p">)</span>
+</code></pre></div>
+
+<h3>Generating HTML</h3>
+<p>My templates are not pretty yet. They don't have to be because it's just to be useful to me. But you need Jinja2 templates for the different types of pages you want to include. I'm probably going to change my templates and page structure but you can get the idea of how to leverage Flask to generate the HTML from a Jinja2 template. Note that if there's a link between pages, you can't use url_for. url_for generates URLs by looking up registered routes on a live Flask server but we are generating static files that will not have an active Flask server. I decided to generate the entire site because I wanted to make sure all the static pages were updated to use the same templates and template versions: </p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">markdown</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">frontmatter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">flask</span><span class="w"> </span><span class="kn">import</span> <span class="n">render_template</span>
+
+<span class="n">PER_PAGE</span> <span class="o">=</span> <span class="mi">10</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_post</span><span class="p">(</span><span class="n">post</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Renders a single post to HTML using a template.&quot;&quot;&quot;</span>
+    <span class="n">html_content</span> <span class="o">=</span> <span class="n">markdown</span><span class="o">.</span><span class="n">markdown</span><span class="p">(</span><span class="n">post</span><span class="o">.</span><span class="n">content</span><span class="p">,</span> <span class="n">extensions</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fenced_code&quot;</span><span class="p">,</span> <span class="s2">&quot;codehilite&quot;</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span>
+        <span class="s2">&quot;post.html&quot;</span><span class="p">,</span>
+        <span class="n">content</span><span class="o">=</span><span class="n">html_content</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="n">post</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">),</span>
+        <span class="n">created_at</span><span class="o">=</span><span class="n">post</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;created_at&quot;</span><span class="p">),</span>
+        <span class="n">modified_at</span><span class="o">=</span><span class="n">post</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;modified_at&quot;</span><span class="p">)</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">generate_site</span><span class="p">(</span><span class="n">app</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generates static HTML files for all published posts and paginated index pages.&quot;&quot;&quot;</span>
+    <span class="n">posts_dir</span> <span class="o">=</span> <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;POSTS_DIR&quot;</span><span class="p">]</span>
+    <span class="n">output_dir</span> <span class="o">=</span> <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;OUTPUT_DIR&quot;</span><span class="p">]</span>
+    <span class="n">posts_output</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="s2">&quot;generated_posts&quot;</span><span class="p">)</span>
+
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">posts_output</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">app_context</span><span class="p">():</span>
+        <span class="n">published_posts</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">filename</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">&quot;.md&quot;</span><span class="p">):</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">posts_dir</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+                <span class="n">post</span> <span class="o">=</span> <span class="n">frontmatter</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">post</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;published&quot;</span><span class="p">):</span>
+                    <span class="k">continue</span>
+
+                <span class="n">rendered</span> <span class="o">=</span> <span class="n">generate_post</span><span class="p">(</span><span class="n">post</span><span class="p">)</span>
+                <span class="n">slug</span> <span class="o">=</span> <span class="n">filename</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;.md&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">posts_output</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">slug</span><span class="si">}</span><span class="s2">.html&quot;</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">rendered</span><span class="p">)</span>
+
+                <span class="n">published_posts</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                    <span class="s2">&quot;slug&quot;</span><span class="p">:</span> <span class="n">slug</span><span class="p">,</span>
+                    <span class="s2">&quot;title&quot;</span><span class="p">:</span> <span class="n">post</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;created_at&quot;</span><span class="p">:</span> <span class="n">post</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;created_at&quot;</span><span class="p">),</span>
+                    <span class="s2">&quot;modified_at&quot;</span><span class="p">:</span> <span class="n">post</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;modified_at&quot;</span><span class="p">),</span>
+                <span class="p">})</span>
+
+        <span class="n">published_posts</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span> <span class="n">p</span><span class="p">[</span><span class="s2">&quot;modified_at&quot;</span><span class="p">],</span> <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">total_pages</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="p">(</span><span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="n">published_posts</span><span class="p">)</span> <span class="o">//</span> <span class="n">PER_PAGE</span><span class="p">))</span>
+
+        <span class="k">for</span> <span class="n">page</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">total_pages</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">start</span> <span class="o">=</span> <span class="p">(</span><span class="n">page</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">PER_PAGE</span>
+            <span class="n">page_posts</span> <span class="o">=</span> <span class="n">published_posts</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">start</span> <span class="o">+</span> <span class="n">PER_PAGE</span><span class="p">]</span>
+
+            <span class="n">prev_url</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">page</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="p">(</span><span class="s2">&quot;index.html&quot;</span> <span class="k">if</span> <span class="n">page</span> <span class="o">==</span> <span class="mi">2</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;page-</span><span class="si">{</span><span class="n">page</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">.html&quot;</span><span class="p">)</span>
+            <span class="n">next_url</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">page</span> <span class="o">==</span> <span class="n">total_pages</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;page-</span><span class="si">{</span><span class="n">page</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">.html&quot;</span>
+
+            <span class="n">page_html</span> <span class="o">=</span> <span class="n">render_template</span><span class="p">(</span>
+                <span class="s2">&quot;index.html&quot;</span><span class="p">,</span>
+                <span class="n">posts</span><span class="o">=</span><span class="n">page_posts</span><span class="p">,</span>
+                <span class="n">page</span><span class="o">=</span><span class="n">page</span><span class="p">,</span>
+                <span class="n">total_pages</span><span class="o">=</span><span class="n">total_pages</span><span class="p">,</span>
+                <span class="n">prev_url</span><span class="o">=</span><span class="n">prev_url</span><span class="p">,</span>
+                <span class="n">next_url</span><span class="o">=</span><span class="n">next_url</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">out_filename</span> <span class="o">=</span> <span class="s2">&quot;index.html&quot;</span> <span class="k">if</span> <span class="n">page</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">&quot;page-</span><span class="si">{</span><span class="n">page</span><span class="si">}</span><span class="s2">.html&quot;</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">out_filename</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">page_html</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="s2">&quot;about.html&quot;</span><span class="p">),</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">render_template</span><span class="p">(</span><span class="s2">&quot;about.html&quot;</span><span class="p">))</span>
+</code></pre></div>
+
+<h3>My admin routes</h3>
+<p>Then putting those all together to control from my browser with a Flask web application, my routes:</p>
+<div class="codehilite"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">flask</span><span class="w"> </span><span class="kn">import</span> <span class="n">render_template</span><span class="p">,</span> <span class="n">request</span><span class="p">,</span> <span class="n">redirect</span><span class="p">,</span> <span class="n">url_for</span><span class="p">,</span> <span class="n">send_from_directory</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">slugify</span><span class="w"> </span><span class="kn">import</span> <span class="n">slugify</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">app</span><span class="w"> </span><span class="kn">import</span> <span class="n">app</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">app.utils.posts_utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_posts</span><span class="p">,</span> <span class="n">load_post</span><span class="p">,</span> <span class="n">save_post</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">app.generator</span><span class="w"> </span><span class="kn">import</span> <span class="n">generate_site</span>
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/admin&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">admin</span><span class="p">():</span>
+    <span class="n">posts</span> <span class="o">=</span> <span class="n">load_posts</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;POSTS_DIR&quot;</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s2">&quot;admin_list.html&quot;</span><span class="p">,</span> <span class="n">posts</span><span class="o">=</span><span class="n">posts</span><span class="p">)</span>
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/posts/&lt;slug&gt;&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">post_detail</span><span class="p">(</span><span class="n">slug</span><span class="p">):</span>
+    <span class="n">post</span> <span class="o">=</span> <span class="n">load_post</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;POSTS_DIR&quot;</span><span class="p">],</span> <span class="n">slug</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">post</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;POST&quot;</span><span class="p">:</span>
+            <span class="n">title</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">)</span>
+            <span class="n">content</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+            <span class="n">published</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;published&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;on&quot;</span>
+            <span class="n">save_post</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;POSTS_DIR&quot;</span><span class="p">],</span> <span class="n">slug</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">published</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">published</span><span class="p">:</span>
+                <span class="n">generate_site</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s2">&quot;post_editor.html&quot;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="n">post</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s2">&quot;404.html&quot;</span><span class="p">),</span> <span class="mi">404</span>
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s2">&quot;/posts/new&quot;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;GET&quot;</span><span class="p">,</span> <span class="s2">&quot;POST&quot;</span><span class="p">])</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">new_post</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;POST&quot;</span><span class="p">:</span>
+        <span class="n">title</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;title&quot;</span><span class="p">)</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+        <span class="n">published</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;published&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;on&quot;</span>
+        <span class="n">slug</span> <span class="o">=</span> <span class="n">slugify</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+        <span class="n">save_post</span><span class="p">(</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s2">&quot;POSTS_DIR&quot;</span><span class="p">],</span> <span class="n">slug</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">published</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">published</span><span class="p">:</span>
+            <span class="n">generate_site</span><span class="p">(</span><span class="n">app</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s2">&quot;admin&quot;</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s2">&quot;post_editor.html&quot;</span><span class="p">,</span> <span class="n">post</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+<h3>GitHub Pages</h3>
+<p>GitHub Pages allows two main options for user/organization sites: </p>
+<ul>
+<li>Serve from / (root)</li>
+<li>Serve from /docs</li>
+</ul>
+<p>I chose to generate into docs/, which keeps source files separate from output.</p>
+<h3>My Repo</h3>
+<p>The code is going to be changing but you can find it <a href="https://github.com/HousewifeHacker/housewifehacker.github.com/tree/master">on Github</a>.</p>
+</article>
+
+    </main>
+
+    <footer class="border-top py-3 mt-4">
+        <div class="container text-muted small">
+            &copy; 2026 Jessica Anderson
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
