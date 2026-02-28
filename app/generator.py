@@ -11,7 +11,7 @@ PER_PAGE = 10
 
 def generate_post(post):
     """Renders a single post to HTML using a template."""
-    html_content = markdown.markdown(post.content)
+    html_content = markdown.markdown(post.content, extensions=["fenced_code", "codehilite"])
     return render_template(
         "post.html",
         content=html_content,

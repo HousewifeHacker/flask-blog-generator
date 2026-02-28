@@ -210,6 +210,21 @@ files = [
 ]
 
 [[package]]
+name = "pygments"
+version = "2.19.2"
+description = "Pygments is a syntax highlighting package written in Python."
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "pygments-2.19.2-py3-none-any.whl", hash = "sha256:86540386c03d588bb81d44bc3928634ff26449851e99741617ecb9037ee5ec0b"},
+    {file = "pygments-2.19.2.tar.gz", hash = "sha256:636cb2477cec7f8952536970bc533bc43743542f70392ae026374600add5b887"},
+]
+
+[package.extras]
+windows-terminal = ["colorama (>=0.4.6)"]
+
+[[package]]
 name = "python-frontmatter"
 version = "1.1.0"
 description = "Parse and manage posts with YAML (or other) frontmatter"
@@ -300,4 +315,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11"
-content-hash = "e146beddcaaa045d8efcda7c985b249f7f8324c2a8dd55e5fdd6bc13956ec8d3"
+content-hash = "20a0a2d799e5bdbf3dd1f487d95f168fdbe77fd783ab7c4db7dbc1ce7cb45f20"
